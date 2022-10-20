@@ -1,0 +1,108 @@
+version: '3.1'
+
+services:
+  mysql:
+    container_name: mysql
+    image: mysql:5.7.37
+    command: mysqld --sql_mode="" --max_allowed_packet=524288000
+    volumes:
+      - "./data/mysql:/var/lib/mysql"
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: helloworld
+      MYSQL_USER: mysql
+      MYSQL_PASSWORD: mysql
+
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin
+    restart: always
+    links:
+      - mysql
+    ports:
+      - 8080:80
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOST=mysql
+      - PMA_port=3306
+      - UPLOAD_LIMIT=10240M
+
+  redis:
+    container_name: redis
+    image: redis:6.2-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1 --loglevel warning
+    # command: redis-server --save 20 1 --loglevel warning --requirepass multitenant
+    volumes:
+      - "./data/redis:/data"
+
+  php:
+    container_name: apache-php
+    build: ./builds/php
+    image: apache2-php7.4
+    ports:
+      - 80:80
+    volumes:
+      - /media/devs:/media/devs/
+      - ./data/apache:/var/www/html/
+      - ./conf/apache/000-default.conf:/etc/apache2/sites-available/000-default.conf
+      - ./conf/apache/php.ini:/usr/local/etc/php/php.ini
+    network_mode: host
+
+  clickhouse:
+    image: yandex/clickhouse-server:20.3
+    container_name: clickhouse
+    environment:
+      # Default user and database will be created using `init-defaults.sh` script
+      # CLICKHOUSE_DB: wemaths
+      CLICKHOUSE_USER: admin
+      CLICKHOUSE_PASSWORD: 123
+    ports:
+      - 8123:8123
+      - 9000:9000
+    volumes:
+      - ./data/clickhouse:/var/lib/clickhouse
+      - ./conf/clickhouse/init.sh:/docker-entrypoint-initdb.d/init-defaults.sh:ro
+    depends_on:
+      - kafka
+    networks:
+      analytics:
+        ipv4_address: 192.168.10.2
+
+  zookeeper:
+    hostname: zookeeper
+    container_name: zookeeper
+    image: bitnami/zookeeper:latest
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+    networks:
+      analytics:
+        ipv4_address: 192.168.10.3
+
+  kafka:
+    depends_on:
+      - zookeeper
+    image: landoop/fast-data-dev:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "3030:3030"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: 192.168.10.4
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    networks:
+      analytics:
+        ipv4_address: 192.168.10.4
+
+networks:
+  analytics:
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.10.0/24

@@ -1,0 +1,4 @@
+/data/apache/**
+/data/clickhouse/**
+/data/mysql/**
+/data/redis/**
