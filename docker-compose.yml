@@ -4,12 +4,12 @@ services:
   mysql:
     container_name: mysql
     image: mysql:5.7.37
-    command: mysqld --sql_mode="" --max_allowed_packet=524288000
+    command: mysqld --sql_mode="" --max_allowed_packet=524288000 --thread_stack=1024M
     volumes:
       - "./data/mysql:/var/lib/mysql"
     restart: always
     ports:
-      - 3306:3306
+      - 127.0.0.1:3306:3306
     environment:
       MYSQL_ROOT_PASSWORD: helloworld
       MYSQL_USER: mysql
@@ -29,10 +29,20 @@ services:
       - PMA_port=3306
       - UPLOAD_LIMIT=10240M
 
+  mongodb:
+    container_name: mongodb
+    image: mongo:3.6
+    ports:
+      - 27017-27019:27017-27019
+    environment:
+      - MONGO_INITDB_DATABASE=electro_development
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=123456
+
   redis:
     container_name: redis
     image: redis:6.2-alpine
-    restart: always
+    # restart: always
     ports:
       - '6379:6379'
     command: redis-server --save 20 1 --loglevel warning
@@ -46,11 +56,25 @@ services:
     image: apache2-php7.4
     ports:
       - 80:80
+      - 8888:8888
     volumes:
       - /media/devs:/media/devs/
       - ./data/apache:/var/www/html/
-      - ./conf/apache/000-default.conf:/etc/apache2/sites-available/000-default.conf
-      - ./conf/apache/php.ini:/usr/local/etc/php/php.ini
+      - ./conf/apache-php/sites-available:/etc/apache2/sites-available
+      - ./conf/apache-php/php.ini:/usr/local/etc/php/php.ini
+    network_mode: host
+
+  php-8.1:
+    container_name: apache-php_8.1
+    build: ./builds/php_8.1
+    image: apache2-php8.1
+    ports:
+      - 80:80
+    volumes:
+      - /media/devs:/media/devs/
+      - ./data/apache:/var/www/html/
+      - ./conf/apache-php_8.1/sites-available:/etc/apache2/sites-available
+      - ./conf/apache-php_8.1/php.ini:/usr/local/etc/php/php.ini
     network_mode: host
 
   clickhouse:
@@ -99,6 +123,17 @@ services:
     networks:
       analytics:
         ipv4_address: 192.168.10.4
+
+  # postgres:
+  #   container_name: postgres
+  #   image: postgres:12
+  #   ports:
+  #     - 5432:5432
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #   volumes:
+  #     - ./data/postgres:/var/lib/postgresql/data    
 
 networks:
   analytics:

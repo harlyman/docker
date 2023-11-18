@@ -1,0 +1,29 @@
+version: '3.1'
+
+services:
+  mysql:
+    container_name: mysql
+    image: mysql:5.7.37
+    command: mysqld --sql_mode="" --max_allowed_packet=524288000
+    volumes:
+      - "/var/docker/data/mysql:/var/lib/mysql"
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      # marcon 3*L38vr&WH&U7fS7a6W5
+      # twilio
+      MYSQL_ROOT_PASSWORD: 44*i3^JG77&ZLfk3
+
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin
+    links:
+      - mysql
+    ports:
+      - 8080:80
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOST=mysql
+      - PMA_port=3306
+      - UPLOAD_LIMIT=10240M
